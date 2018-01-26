@@ -1,0 +1,14 @@
+{
+  "name": "Node Server",
+  "version": "1.0.0",
+  "main": "app.js",
+  "license": "MIT",
+  "dependencies": {
+    "password-hash-and-salt": "^0.1.4",
+    "symfode": "https://github.com/bombsightgames/Symfode.git"
+  },
+  "scripts": {
+    "start": "nodemon",
+    "mongo": "\"\"C:\\Program Files\\MongoDB\\Server\\3.6\\bin\\mongod.exe\"\""
+  }
+}
