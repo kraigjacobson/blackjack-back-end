@@ -11,7 +11,8 @@ symfode.init(__dirname, [
                 username: command.args.username,
                 password: command.args.password,
                 name: 'Super Admin',
-                roles: 'ROLE_SUPER_ADMIN'
+                roles: 'ROLE_SUPER_ADMIN',
+                location: 'Jakku'
             };
 
             worker.services.user.createUser(data).then(() => {

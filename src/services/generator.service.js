@@ -3,6 +3,7 @@
 const Q = require('q');
 
 module.exports = function(w) {
+
     this.createLocation = () => {
         let defer = Q.defer();
         let name = this.createName(Math.ceil((Math.random()*8)+1));
@@ -63,6 +64,6 @@ module.exports = function(w) {
         return Math.floor(Math.random() * max) + min;
     };
 
-    this.createLocation();
+    // this.createLocation();
 
 };

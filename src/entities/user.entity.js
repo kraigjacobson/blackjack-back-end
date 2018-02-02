@@ -9,9 +9,13 @@ module.exports = function(w) {
         roles: Sequelize.STRING,
         name: Sequelize.STRING,
         email: Sequelize.STRING,
-        location: Sequelize.STRING,
-        credits: Sequelize.INTEGER
+        locationId: Sequelize.INTEGER,
+        credits: {
+            type: Sequelize.INTEGER,
+            defaultValue: 400
+        }
     }, {
+        timestamps: false,
         indexes: [
             {
                 fields: ['username']

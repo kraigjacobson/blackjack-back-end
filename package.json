@@ -1,5 +1,5 @@
 {
-  "name": "Node Server",
+  "name": "proj-server",
   "version": "1.0.0",
   "main": "app.js",
   "license": "MIT",
