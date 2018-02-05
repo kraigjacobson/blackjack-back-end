@@ -5,9 +5,9 @@ const Q = require('q');
 module.exports = function (w) {
 
     this.currentDeck = [];
-    this.players = {};
-    this.dealerCards = [];
-    this.table = {'one': null, 'two': null, 'three': null, 'four': null, 'five': null, };
+    this.players = [];
+    this.dealer = {'hand': [], 'count': 0};
+    this.table = {'one': null, 'two': null, 'three': null, 'four': null, 'five': null,};
     this.waitList = [];
 
     this.getNewDeck = () => {
@@ -45,23 +45,34 @@ module.exports = function (w) {
 
 
     this.startRound = () => {
+        this.dealer = {'hand': [], 'count': 0};
         console.log('starting round');
         this.getNewDeck();
         // deal 2 cards to each player
-        for (let i = 0; i < Object.keys(this.players).length; i++) {
-            let username = Object.keys(this.players)[i];
-            let cards = this.players[username].hand;
-            cards = [];
-            for (let i = 0; i < 2; i++) {
-                cards.push(this.dealCard());
+        console.log('this.players', this.players);
+        for (let i = 0; i < this.players.length; i++) {
+            console.log(i);
+            // let username = Object.keys(this.players)[i];
+            console.log('thisplayer=====',this.players[i]);
+            this.players[i].hand = [];
+            for (let j = 0; j < 2; j++) {
+                console.log(i);
+                console.log('this.players', this.players);
+                console.log('this.players[i]', this.players[i]);
+                let card = this.dealCard();
+                this.players[i].hand.push(card);
+                this.players[i].count += card.value;
             }
-            console.log('cards', cards);
+            // console.log('cards', this.players[username].hand);
+            // console.log('players', this.players);
         }
         // deal 2 cards to dealer
-        this.dealerCards = [];
         for (let i = 0; i < 2; i++) {
-            this.dealerCards.push(this.dealCard());
+            let card = this.dealCard();
+            this.dealer.hand.push(card);
+            this.dealer.count += card.value;
         }
+        return {'players': this.players, 'dealer': this.dealer, 'table': this.table }
     };
 
     this.dealCard = () => {
@@ -89,6 +100,14 @@ module.exports = function (w) {
             }
         }
         return true;
+    };
+
+    this.getIndexOfPlayer = (username) => {
+        for (let i = 0; i < this.players.length; i++) {
+            if (this.players[i].username === username) {
+                return i;
+            }
+        }
     };
 
 };

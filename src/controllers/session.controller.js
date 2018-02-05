@@ -2,6 +2,7 @@
 
 module.exports = function(w, app) {
     app.get('/session', function (req, res) {
+        console.log('sup');
         if (req.session) {
             res.send(req.session);
         } else {

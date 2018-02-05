@@ -4,6 +4,7 @@
   "main": "app.js",
   "license": "MIT",
   "dependencies": {
+    "nodemon": "^1.14.12",
     "password-hash-and-salt": "^0.1.4",
     "symfode": "https://github.com/bombsightgames/Symfode.git"
   },
