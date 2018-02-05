@@ -5,10 +5,11 @@ const Q = require('q');
 module.exports = function (w) {
 
     this.currentDeck = [];
-    this.players = [];
+    this.players = [null, null, null, null, null];
     this.dealer = {'hand': [], 'count': 0};
-    this.table = {'one': null, 'two': null, 'three': null, 'four': null, 'five': null,};
     this.waitList = [];
+    this.activePlay = false;
+    this.currentPlayer = null;
 
     this.getNewDeck = () => {
         let deck = [];
@@ -45,61 +46,125 @@ module.exports = function (w) {
 
 
     this.startRound = () => {
+        this.activePlay = true;
         this.dealer = {'hand': [], 'count': 0};
         console.log('starting round');
         this.getNewDeck();
         // deal 2 cards to each player
-        console.log('this.players', this.players);
         for (let i = 0; i < this.players.length; i++) {
-            console.log(i);
-            // let username = Object.keys(this.players)[i];
-            console.log('thisplayer=====',this.players[i]);
-            this.players[i].hand = [];
-            for (let j = 0; j < 2; j++) {
-                console.log(i);
-                console.log('this.players', this.players);
-                console.log('this.players[i]', this.players[i]);
-                let card = this.dealCard();
-                this.players[i].hand.push(card);
-                this.players[i].count += card.value;
+            let player = this.players[i];
+            if (player) {
+                player.hand = [];
+                for (let j = 0; j < 2; j++) {
+                    let card = this.dealCard();
+                    player.hand.push(card);
+                    player.count = this.calculateCount(player.hand);
+                    if (player.count === 21){
+                        // BLACKJACK
+                        //TODO: tell player they get a blackjack
+                        player.money += Math.ceil(player.bet * 1.5);
+                    }
+                }
             }
-            // console.log('cards', this.players[username].hand);
-            // console.log('players', this.players);
         }
         // deal 2 cards to dealer
         for (let i = 0; i < 2; i++) {
             let card = this.dealCard();
             this.dealer.hand.push(card);
-            this.dealer.count += card.value;
+            this.dealer.count = this.calculateCount(this.dealer.hand);
         }
-        return {'players': this.players, 'dealer': this.dealer, 'table': this.table }
+        return {'players': this.players, 'dealer': this.dealer }
+    };
+
+    this.nextPlayer = () => {
+        let thisPlayer;
+        if (!this.currentPlayer) {
+            thisPlayer = 0;
+        } else if (this.currentPlayer === this.currentPlayer.length) {
+            // round over
+            this.currentPlayer = 0;
+            this.finishRound();
+        } else {
+            thisPlayer = this.currentPlayer;
+        }
+        for (let i = thisPlayer; i < this.players.length; i++) {
+            if (this.players[i]) {
+                this.currentPlayer = i;
+                break;
+            }
+        }
+    };
+
+    this.finishRound = () => {
+        for (let i = thisPlayer; i < this.players.length; i++) {
+            let player = this.players[i];
+            // if player hasn't busted
+            if (this.players[i] && player.count <=21) {
+                if (dealer.count > player.count) {
+                    // player loses
+                    // TODO: tell player they lose
+                    player.money -= player.bet;
+                    if (player.money <= 0 ) {
+                        // player is out of money
+                        // TODO: kick player back to login screen
+                    }
+                } else if (dealer.count > player.count) {
+                    // player wins
+                    // TODO: tell player they win
+                    player.money += player.bet;
+                } else {
+                    // player pushes
+                    // TODO: tell player they push
+                }
+            }
+        }
+    };
+
+    this.playerHits = (seat) => {
+        let card = this.dealCard();
+        this.players[seat].hand.push(card);
+        this.players[seat].count = this.calculateCount(this.players[seat].hand);
+        return {'players': this.players, 'dealer': this.dealer }
     };
 
     this.dealCard = () => {
         let index = Math.floor(Math.random() * this.currentDeck.length);
-        let card = this.currentDeck.splice(index, 1)[0];
-        console.log(card);
-        return card;
+        return this.currentDeck.splice(index, 1)[0];
+    };
+
+    this.calculateCount = (hand) => {
+        let total = 0;
+        hand.forEach(function(card) {
+            if (card.name === "ace") {
+                if (total + 11 <= 21) {
+                    total += 11;
+                } else if (total + 1 <= 21) {
+                    total += 1;
+                }
+            } else {
+                total += card.value;
+            }
+        });
+        return total;
     };
 
     this.isOpenSeat = () => {
-        let keys = Object.keys(this.table);
-        for (let i = 0; i < keys.length; i++) {
-            if (!this.table[keys[i]]) {
+        for (let i = 0; i < this.players.length; i++) {
+            if (!this.players[i]) {
                 // found open spot
-                return keys[i];
+                return i;
             }
         }
     };
 
     this.readyCheck = () => {
-        console.log('Object.keys(this.players)', Object.keys(this.players));
-        for (let i = 0; i < Object.keys(this.players).length; i++) {
-            if (!this.players[Object.keys(this.players)[i]].ready) {
-                return false;
+        let ready = true;
+        this.players.forEach(function(player) {
+            if (player && !player.ready) {
+                ready = false;
             }
-        }
-        return true;
+        });
+        return ready;
     };
 
     this.getIndexOfPlayer = (username) => {
