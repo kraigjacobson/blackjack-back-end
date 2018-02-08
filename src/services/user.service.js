@@ -262,6 +262,7 @@ module.exports = function(w) {
             if (err) {
                 defer.reject(err);
             } else {
+                delete data.user.credits;
                 data.user.roles = 'ROLE_USER';
                 data.user.password = hash;
 

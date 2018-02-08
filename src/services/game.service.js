@@ -9,7 +9,7 @@ module.exports = function (w) {
     this.dealer = {'hand': [], 'count': 0};
     this.waitList = [];
     this.activePlay = false;
-    this.currentPlayer = null;
+    this.currentPlayerPosition = 0;
 
     this.getNewDeck = () => {
         let deck = [];
@@ -42,27 +42,34 @@ module.exports = function (w) {
             }
         }
         this.currentDeck = deck;
+        console.log('deck done');
     };
 
 
-    this.startRound = () => {
+    this.deal = () => {
+        this.currentPlayerPosition = 0;
         this.activePlay = true;
-        this.dealer = {'hand': [], 'count': 0};
         console.log('starting round');
+        this.dealer = {'hand': [], 'count': 0};
         this.getNewDeck();
         // deal 2 cards to each player
         for (let i = 0; i < this.players.length; i++) {
             let player = this.players[i];
             if (player) {
-                player.hand = [];
+                player.session.user.hand = [];
                 for (let j = 0; j < 2; j++) {
                     let card = this.dealCard();
-                    player.hand.push(card);
-                    player.count = this.calculateCount(player.hand);
-                    if (player.count === 21){
+                    player.session.user.hand.push(card);
+                    player.session.user.count = this.calculateCount(player.session.user.hand);
+                    if (j === 1 && player.session.user.count === 21){
                         // BLACKJACK
-                        //TODO: tell player they get a blackjack
-                        player.money += Math.ceil(player.bet * 1.5);
+                        player.session.user.money += Math.ceil(player.session.user.bet * 1.5);
+                        player.emit('alert', {'type':'SUCCESS','message': 'You got a BlackJack!'});
+                        player.session.user.active = false;
+                        player.session.user.gone = true;
+                        player.emit('buttons', [
+                            {'button':'hit','condition':false},
+                            {'button':'stay','condition':false}]);
                     }
                 }
             }
@@ -73,58 +80,116 @@ module.exports = function (w) {
             this.dealer.hand.push(card);
             this.dealer.count = this.calculateCount(this.dealer.hand);
         }
-        return {'players': this.players, 'dealer': this.dealer }
+        this.nextPlayer();
+        return {'players': this.preparedPlayers(), 'dealer': this.dealer };
     };
 
     this.nextPlayer = () => {
-        let thisPlayer;
-        if (!this.currentPlayer) {
-            thisPlayer = 0;
-        } else if (this.currentPlayer === this.currentPlayer.length) {
-            // round over
-            this.currentPlayer = 0;
-            this.finishRound();
-        } else {
-            thisPlayer = this.currentPlayer;
-        }
-        for (let i = thisPlayer; i < this.players.length; i++) {
-            if (this.players[i]) {
-                this.currentPlayer = i;
-                break;
+        console.log('next player');
+        let turnsLeft = false;
+        for (let i = 0; i < this.players.length; i++) {
+            if (this.players[i] && !this.players[i].session.user.gone) {
+                this.currentPlayerPosition = i;
+                turnsLeft = true;
+                console.log('currentPlayer', this.players[i].session.user.username);
+                    this.players[i].emit('alert', {'type':'INFO','message': 'Your turn!'});
+                    this.players[i].emit('buttons', [
+                        {'button':'hit','condition':true},
+                        {'button':'stay','condition':true}]);
+                    return;
+            } else {
+                console.log('empty seat');
             }
+        }
+        if (!turnsLeft) {
+            this.finishRound();
         }
     };
 
     this.finishRound = () => {
-        for (let i = thisPlayer; i < this.players.length; i++) {
-            let player = this.players[i];
-            // if player hasn't busted
-            if (this.players[i] && player.count <=21) {
-                if (dealer.count > player.count) {
-                    // player loses
-                    // TODO: tell player they lose
-                    player.money -= player.bet;
-                    if (player.money <= 0 ) {
-                        // player is out of money
-                        // TODO: kick player back to login screen
+        console.log('finishing up round');
+        // flip dealer card over
+        while (this.dealer.count < 17) {
+            let card = this.dealCard();
+            this.dealer.hand.push(card);
+            this.dealer.count = this.calculateCount(this.dealer.hand);
+            if (this.dealer.count > 21) {
+                w.io.emit('alert', {'type':'SUCCESS','message': 'Dealer Busts!'});
+            }
+        }
+        for (let l = 0; l < this.players.length; l++) {
+            let player = this.players[l];
+            if (player) {
+                if (player.session.user.active) {
+                    if (this.dealer.count > 21 || this.dealer.count < player.session.user.count) {
+                        // player wins
+                        player.emit('alert', {'type':'SUCCESS','message': 'You Win!'});
+                        player.session.user.money += player.session.user.bet;
+                    } else if (this.dealer.count > player.session.user.count) {
+                        // player loses
+                        player.emit('alert', {'type':'DANGER','message': 'You Lose!'});
+                        player.session.user.money -= player.session.user.bet;
+                        if (player.session.user.money <= 0 ) {
+                            // player is out of money
+                            player.emit('alert', {'type':'DANGER','message': 'You are out of money!'});
+                            player.disconnect();
+                        }
+                    } else {
+                        // player pushes
+                        player.emit('alert', {'type':'INFO','message': 'You push!'});
                     }
-                } else if (dealer.count > player.count) {
-                    // player wins
-                    // TODO: tell player they win
-                    player.money += player.bet;
-                } else {
-                    // player pushes
-                    // TODO: tell player they push
                 }
             }
         }
+
+        w.io.emit('buttons', [
+            {'button':'ready', 'condition':true}]);
+        for (let j = 0; j < this.players.length; j++) {
+            let player = this.players[j];
+            if (player){
+                player.session.user.ready = false;
+                player.session.user.active = true;
+                player.session.user.gone = false;
+            }
+        }
+        w.io.emit('dataUpdate', {'players': this.preparedPlayers(), 'dealer': this.dealer });
+        console.log('this.waitList.length', this.waitList.length);
+        if (this.waitList.length) {
+            for (let i = 0; i < this.waitList.length; i++) {
+                let openSeat = this.isOpenSeat();
+                if (openSeat) {
+                    this.fillSeat(this.waitList.shift(), openSeat);
+                } else {
+                    socket.emit('alert', {'type':'WARNING','message': `Sorry there are still no seats avalable.`});
+                }
+            }
+        }
+        this.activePlay = false;
     };
 
     this.playerHits = (seat) => {
+        console.log('~~~~~~~~~~~this.playerHits');
+        console.log(seat);
         let card = this.dealCard();
-        this.players[seat].hand.push(card);
-        this.players[seat].count = this.calculateCount(this.players[seat].hand);
-        return {'players': this.players, 'dealer': this.dealer }
+        let player = this.players[seat];
+        // console.log('fdjksl;afjkdlsa;jfkld;saf', player);
+        // console.log(player.session);
+        // console.log(player.session.user);
+        player.session.user.hand.push(card);
+        player.session.user.count = this.calculateCount(player.session.user.hand);
+        if (player.session.user.count > 21) {
+            console.log('player busts');
+            player.emit('alert', {'type':'DANGER','message': 'You Busted!'});
+            player.emit('buttons', [
+                {'button':'ready', 'condition':false},
+                {'button':'hit','condition':false},
+                {'button':'stay','condition':false}]);
+            player.session.user.active = false;
+            player.session.user.money -= player.session.user.bet;
+            player.session.user.gone = true;
+            this.nextPlayer();
+        }
+        return {'players': this.preparedPlayers(), 'dealer': this.dealer };
     };
 
     this.dealCard = () => {
@@ -157,22 +222,66 @@ module.exports = function (w) {
         }
     };
 
-    this.readyCheck = () => {
-        let ready = true;
-        this.players.forEach(function(player) {
-            if (player && !player.ready) {
-                ready = false;
+    this.preparedPlayers = () => {
+        let safePlayers = [];
+        for (let i = 0; i < this.players.length; i++) {
+            if (this.players[i]) {
+                safePlayers.push(this.players[i].session.user);
+            } else {
+                safePlayers.push(null);
             }
-        });
-        return ready;
+        }
+        return safePlayers;
     };
 
-    this.getIndexOfPlayer = (username) => {
-        for (let i = 0; i < this.players.length; i++) {
-            if (this.players[i].username === username) {
-                return i;
+    this.readyCheck = () => {
+        let ready = true;
+        for (let j = 0; j < this.players.length; j++) {
+            let player = this.players[j];
+            if (player && player.session.user.ready === false){
+                console.log('player.session.user.ready', player.session.user.username, player.session.user.ready);
+                w.io.emit('message', `Waiting on ${player.session.user.username}...`);
+                ready = false;
             }
+        }
+        if (ready) {
+            console.log('game active');
+            let data = this.deal();
+            w.io.emit('dataUpdate', data);
         }
     };
 
+    this.fillSeat = (socket, index) => {
+        // see if there is an open seat
+        if (index != null) {
+            // seat player
+            this.players[index] = socket;
+            socket.session.user.seat = index;
+            socket.emit('alert', {'type':'SUCCESS','message': `You have been seated.`});
+            socket.emit('buttons', [
+                {'button':'ready', 'condition':true},
+                {'button':'hit','condition':false},
+                {'button':'stay','condition':false}]);
+            let numberofactive = 0;
+            for (let j = 0; j < this.players.length; j++) {
+                let player = this.players[j];
+                if (player){
+                    numberofactive++;
+                }
+            }
+            console.log('number of active players', numberofactive);
+            console.log('number on waitlist', this.waitList.length);
+        }
+
+        w.io.emit('dataUpdate', {'players': this.preparedPlayers(), 'dealer': this.dealer });
+    };
+
+    this.waitListPlayer = (socket) => {
+        // waitlist player
+        socket.emit('alert', {'type':'WARNING','message': `There are no available seats. You've been placed on a waitlist.`});
+        this.waitList.push(socket.session.user);
+        player.emit('buttons', [
+            {'button':'ready', 'condition':false}]);
+        w.io.emit('dataUpdate', {'players': this.preparedPlayers(), 'dealer': this.dealer });
+    };
 };
