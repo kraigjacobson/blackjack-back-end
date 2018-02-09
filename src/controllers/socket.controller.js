@@ -7,95 +7,93 @@ module.exports = function (w, app, io) {
             return;
         }
         let game = w.services.game;
-        let user = socket.session.user;
-        socket.session.user = {'username': user.username, 'hand': [], 'ready': false, 'money': 100, 'count': 0, 'bet': 5, 'active': true, 'gone': false};
-        socket.join('user:' + user.id);
-        console.log(`${user.username} ${socket.id} connected.`);
-        io.emit('message', `${user.username} connected.`);
-        socket.emit('init', socket.session.user);
-        io.emit('dataUpdate', {'players': game.preparedPlayers(), 'dealer': game.dealer });
+        socket.user = {'username': socket.session.user.username, 'hand': [], 'ready': false, 'money': 100, 'count': 0, 'bet': 5, 'active': true, 'gone': false, 'turn': false};
+        socket.join('user:' + socket.session.user.id);
+        console.log(`${socket.user.username} ${socket.id} connected.`);
+        io.emit('message', `${socket.user.username} connected.`);
+        if (!game.players.length) {
+            game.resetGame();
+        }
         // if round already started
         if (!game.activePlay) {
-            game.fillSeat(socket, game.isOpenSeat());
+            if (game.players.length < 5) {
+                game.sit(socket);
+            } else {
+                game.sendToWaitlist();
+            }
         } else {
             socket.emit('alert', {'type':'WARNING','message': `Round in play. Please wait until a new round begins.`});
-            game.waitList.push(socket);
+            game.waitlist.push(socket);
             socket.emit('buttons', [
                 {'button':'ready', 'condition':false}]);
-            io.emit('dataUpdate', {'players': game.preparedPlayers(), 'dealer': game.dealer });
         }
 
         socket.on('message', function (message) {
-            io.emit('message', `${socket.session.user.username}: ${message}`);
+            io.emit('message', `${socket.user.username}: ${message}`);
         });
 
         socket.on('readyCheck', function (data) {
-            if (socket.session.user.money < data) {
+            if (socket.user.money < data) {
                 socket.emit('alert', {'type':'DANGER','message': `You don't have enough money.`});
             } else {
-                console.log('userReadyCheck', user);
-                socket.session.user.bet = data;
+                socket.user.bet = data;
                 socket.emit('buttons', [{'button':'ready', 'condition':false}]);
-                socket.session.user.ready = true;
+                socket.user.ready = true;
                 game.readyCheck();
             }
         });
 
         socket.on('hit', function () {
-            console.log('socket.id', socket.id);
-            console.log(game.players[game.currentPlayerPosition].id);
-            if (socket.id === game.players[game.currentPlayerPosition].id) {
+            if (socket.user.turn) {
                 // add card to user's hand
-                console.log(`${user.username} hit.`);
-                console.log('socket.session.user.seat', socket.session.user.seat);
-                io.emit('dataUpdate', game.playerHits(socket.session.user.seat));
+                console.log(`${socket.user.username} hit.`);
+                game.playerHits(socket);
             }
         });
 
         socket.on('stay', function () {
             console.log('stay received');
-            if (socket.id === game.players[game.currentPlayerPosition].id) {
+            if (socket.user.turn) {
                 // pass turn to next player
-                console.log(`${user.username} stay===========.`);
-                socket.emit('buttons', [
-                    {'button':'hit','condition':false},
-                    {'button':'stay','condition':false}]);
-                socket.session.user.gone = true;
+                console.log(`${socket.user.username} stay===========.`);
+                socket.user.gone = true;
+                socket.user.turn = false;
                 game.nextPlayer();
             }
         });
 
         socket.on('double', function () {
-            if (socket.id === game.players[game.currentPlayerPosition].id) {
+            if (socket.user.turn) {
                 // double bet, deal 1 card, pass turn to next player
-                console.log(`${user.username} double.`);
+                console.log(`${socket.user.username} double.`);
             }
         });
 
         socket.on('split', function () {
-            if (socket.id === game.players[game.currentPlayerPosition].id) {
+            if (socket.user.turn) {
                 // figure out later
-                console.log(`${user.username} split.`);
+                console.log(`${socket.user.username} split.`);
             }
         });
 
         socket.on('disconnect', function () {
             for ( let i = 0; i < game.players.length; i++ ) {
-                if (game.players[i]) {
-                    if (game.players[i].session.user.username === socket.session.user.username) {
-                        if (game.activePlay) {
-                            game.players[i] = null;
-                            game.nextPlayer();
-                        } else {
-                            game.players[i] = null;
-                            game.readyCheck();
-                        }
+                let player = game.players[i];
+                console.log('player.user.username', player.user.username);
+                console.log('socketusername', socket.user.username);
+                console.log('game.players', game.players.length);
+                if (player.user.username === socket.user.username) {
+                    game.players.splice(i, 1);
+                    if (game.activePlay) {
+                        game.nextPlayer();
+                    } else {
+                        game.readyCheck();
                     }
                 }
             }
-            io.emit('dataUpdate', {'players': game.preparedPlayers(), 'dealer': game.dealer });
-            console.log(`${user.username} disconnected.`);
-            io.emit('message', `${user.username} disconnected.`);
+            game.sendUpdate();
+            console.log(`${socket.user.username} disconnected.`);
+            io.emit('message', `${socket.user.username} disconnected.`);
         });
     });
 };
