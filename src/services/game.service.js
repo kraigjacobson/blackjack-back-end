@@ -79,38 +79,33 @@ module.exports = function (w) {
 
     this.nextPlayer = () => {
         console.log('next player');
-        this.sendUpdate();
-
-        let playersDone = 0;
+        let playerFound;
+        console.log('this.players.length', this.players.length);
         for (let i = 0; i < this.players.length; i++) {
             let player = this.players[i];
             if (!player.user.gone) {
-                console.log('this player\'s turn');
-                player.user.turn = true;
-                player.emit('alert', {'type':'INFO','message': 'Your turn!'});
-                this.sendUpdate();
+                playerFound = player;
                 break;
-            } else {
-                playersDone++;
-                console.log('already gone');
-            }
-            console.log(playersDone);
-            console.log(this.players.length);
-            if (playersDone === this.players.length) {
-                console.log('finishing round');
-                this.finishRound();
             }
         }
-        this.sendUpdate();
+        if (playerFound) {
+            playerFound.user.turn = true;
+            playerFound.emit('alert', {'type':'INFO','message': 'Your turn!'});
+            this.sendUpdate();
+        } else {
+            this.finishRound();
+        }
     };
 
     this.finishRound = () => {
         console.log('finishing up round');
         // flip dealer card over
+        console.log('7');
         this.dealer.hand.push(this.dealerHidden);
         this.dealer.count = this.calculateCount(this.dealer.hand);
         // dealer hits until 17 or bust
         while (this.dealer.count < 17) {
+            console.log('8');
             let card = this.dealCard();
             this.dealer.hand.push(card);
             this.dealer.count = this.calculateCount(this.dealer.hand);
@@ -120,42 +115,53 @@ module.exports = function (w) {
         }
 
         this.players.forEach((player) => {
+            console.log('9');
             if (player.user.active) {
+                console.log('10');
                 if (this.dealer.count > 21 || this.dealer.count < player.user.count) {
+                    console.log('11');
                     // player wins
                     player.emit('alert', {'type':'SUCCESS','message': 'You Win!'});
                     player.user.money += player.user.bet;
                 } else if (this.dealer.count > player.user.count) {
+                    console.log('12');
                     // player loses
                     player.emit('alert', {'type':'DANGER','message': 'You Lose!'});
                     player.user.money -= player.user.bet;
                     if (player.user.money <= 0 ) {
+                        console.log('13');
                         // player is out of money
                         player.emit('alert', {'type':'DANGER','message': 'You are out of money!'});
                         player.disconnect();
                     }
                 } else {
+                    console.log('14');
                     // player pushes
                     player.emit('alert', {'type':'INFO','message': 'You push!'});
                 }
+            } else {
+                console.log('15');
             }
         });
 
         w.io.emit('buttons', [
             {'button':'ready', 'condition':true}]);
         for (let j = 0; j < this.players.length; j++) {
+            console.log('16');
             let player = this.players[j];
             if (player){
+                console.log('17');
                 player.user.ready = false;
                 player.user.active = true;
                 player.user.gone = false;
             }
         }
-        this.sendUpdate();
         this.activePlay = false;
         console.log('this.waitlist.length', this.waitlist.length);
         if (this.waitlist.length) {
+            console.log('18');
             this.waitlist.forEach((player) => {
+                console.log('19');
                 if (this.players.length < 5) {
                     this.sit(this.waitlist.shift());
                 } else {
@@ -163,9 +169,11 @@ module.exports = function (w) {
                 }
             });
         }
+        this.sendUpdate();
     };
 
     this.playerHits = (player) => {
+        console.log('3');
         let card = this.dealCard();
         player.user.hand.push(card);
         player.user.count = this.calculateCount(player.user.hand);
@@ -178,6 +186,7 @@ module.exports = function (w) {
             player.user.gone = true;
             this.nextPlayer();
         }
+        console.log('4');
         this.sendUpdate();
     };
 
@@ -225,7 +234,9 @@ module.exports = function (w) {
     };
 
     this.sit = (socket) => {
+        console.log('20');
         if (this.players.length < 5) {
+            console.log('21');
             this.players.push(socket);
             socket.emit('alert', {'type':'SUCCESS','message': `You have been seated.`});
             socket.emit('buttons', [
@@ -233,6 +244,7 @@ module.exports = function (w) {
                 {'button':'hit','condition':false},
                 {'button':'stay','condition':false}]);
         }
+        console.log('22');
         this.sendUpdate();
     };
 

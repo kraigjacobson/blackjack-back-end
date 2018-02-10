@@ -12,6 +12,7 @@ module.exports = function(w) {
             defaultValue: 400
         }
     }, {
+        timestamps: false,
         indexes: [
             {
                 fields: ['username']

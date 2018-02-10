@@ -44,7 +44,9 @@ module.exports = function (w, app, io) {
         });
 
         socket.on('hit', function () {
+            console.log('1');
             if (socket.user.turn) {
+                console.log('2');
                 // add card to user's hand
                 console.log(`${socket.user.username} hit.`);
                 game.playerHits(socket);
@@ -77,6 +79,7 @@ module.exports = function (w, app, io) {
         });
 
         socket.on('disconnect', function () {
+            console.log('game.players.length',game.players.length);
             for ( let i = 0; i < game.players.length; i++ ) {
                 let player = game.players[i];
                 console.log('player.user.username', player.user.username);
