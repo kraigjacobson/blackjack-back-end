@@ -7,7 +7,8 @@ module.exports = function (w) {
     this.currentDeck = [];
     this.players = [];
     this.dealer = {'hand': [], 'count': 0};
-    this.dealerHidden = null;
+    this.dealerHidden = {'card': null, 'count':0};
+    this.dealer21 = false;
     this.waitlist = [];
     this.activePlay = false;
 
@@ -34,11 +35,15 @@ module.exports = function (w) {
             }
             // generate face cards
             for (let i = 0; i < faces.length; i++) {
-                deck.push({
+                let card = {
                     name: faces[i],
                     suite: suites[j],
                     value: 10
-                })
+                };
+                if (faces[i]==='ace'){
+                    card.value = 11;
+                }
+                deck.push(card);
             }
         }
         return deck;
@@ -72,8 +77,15 @@ module.exports = function (w) {
         });
         // deal 1 showing card and 1 hidden card to dealer
         this.dealer.hand.push(this.dealCard());
-        this.dealerHidden = this.dealCard();
+        this.dealerHidden.card = this.dealCard();
         this.dealer.count = this.calculateCount(this.dealer.hand);
+        console.log('this.dealer.count', this.dealer.count);
+        this.dealerHidden.count = this.dealer.count + this.dealerHidden.card.value;
+        console.log('this.dealerHidden.count', this.dealerHidden.count);
+        if (this.dealerHidden.count === 21) {
+            this.dealer21 = true;
+            console.log('dealer gets 21');
+        }
         this.nextPlayer();
     };
 
@@ -84,8 +96,16 @@ module.exports = function (w) {
         for (let i = 0; i < this.players.length; i++) {
             let player = this.players[i];
             if (!player.user.gone) {
-                playerFound = player;
-                break;
+                if (this.dealer21) {
+                    player.emit('alert', {'type':'DANGER','message': 'Dealer got 21. You lose!'});
+                    player.user.turn = false;
+                    player.user.active = false;
+                    player.user.money -= player.user.bet;
+                    player.user.gone = true;
+                } else {
+                    playerFound = player;
+                    break;
+                }
             }
         }
         if (playerFound) {
@@ -100,8 +120,7 @@ module.exports = function (w) {
     this.finishRound = () => {
         console.log('finishing up round');
         // flip dealer card over
-        console.log('7');
-        this.dealer.hand.push(this.dealerHidden);
+        this.dealer.hand.push(this.dealerHidden.card);
         this.dealer.count = this.calculateCount(this.dealer.hand);
         // dealer hits until 17 or bust
         while (this.dealer.count < 17) {
@@ -157,6 +176,7 @@ module.exports = function (w) {
             }
         }
         this.activePlay = false;
+        this.dealer21 = false;
         console.log('this.waitlist.length', this.waitlist.length);
         if (this.waitlist.length) {
             console.log('18');
@@ -260,7 +280,9 @@ module.exports = function (w) {
         this.currentDeck = [];
         this.players = [];
         this.dealer = {'hand': [], 'count': 0};
-        this.dealerHidden = null;
+        this.dealerHidden.card = null;
+        this.dealerHidden.count = 0;
+        this.dealer21 = false;
         this.waitlist = [];
         this.activePlay = false;
     };
