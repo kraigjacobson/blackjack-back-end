@@ -7,8 +7,10 @@ module.exports = function (w, app, io) {
             return;
         }
         let game = w.services.game;
-        socket.user = {'username': socket.session.user.username, 'hand': [], 'ready': false, 'money': 100, 'count': 0, 'bet': 5, 'active': true, 'gone': false, 'turn': false};
+        socket.user = {'id': socket.session.session.userId, 'username': socket.session.user.username, 'hand': [], 'ready': false, 'money': 100, 'count': 0, 'bet': 5, 'active': true, 'gone': false, 'turn': false};
         socket.join('user:' + socket.session.user.id);
+
+
         console.log(`${socket.user.username} ${socket.id} connected.`);
         io.emit('message', `${socket.user.username} connected.`);
         if (!game.players.length) {
@@ -72,6 +74,13 @@ module.exports = function (w, app, io) {
         });
 
         socket.on('split', function () {
+            if (socket.user.turn) {
+                // figure out later
+                console.log(`${socket.user.username} split.`);
+            }
+        });
+
+        socket.on('buyIn', function () {
             if (socket.user.turn) {
                 // figure out later
                 console.log(`${socket.user.username} split.`);

@@ -65,6 +65,7 @@ module.exports = function (w) {
                 if (j === 1 && player.user.count === 21){
                     // BLACKJACK
                     player.user.money += Math.ceil(player.user.bet * 2);
+                    w.services.user.updateUser(player.user.id, {'credits': player.user.money});
                     player.emit('alert', {'type':'SUCCESS','message': 'You got a BlackJack!'});
                     player.user.active = false;
                     player.user.turn = false;
@@ -101,6 +102,7 @@ module.exports = function (w) {
                     player.user.turn = false;
                     player.user.active = false;
                     player.user.money -= player.user.bet;
+                    w.services.user.updateUser(player.user.id, {'credits': player.user.money});
                     player.user.gone = true;
                 } else {
                     playerFound = player;
@@ -142,11 +144,13 @@ module.exports = function (w) {
                     // player wins
                     player.emit('alert', {'type':'SUCCESS','message': 'You Win!'});
                     player.user.money += player.user.bet;
+                    w.services.user.updateUser(player.user.id, {'credits': player.user.money});
                 } else if (this.dealer.count > player.user.count) {
                     console.log('12');
                     // player loses
                     player.emit('alert', {'type':'DANGER','message': 'You Lose!'});
                     player.user.money -= player.user.bet;
+                    w.services.user.updateUser(player.user.id, {'credits': player.user.money});
                     if (player.user.money <= 0 ) {
                         console.log('13');
                         // player is out of money
@@ -203,6 +207,7 @@ module.exports = function (w) {
             player.user.turn = false;
             player.user.active = false;
             player.user.money -= player.user.bet;
+            w.services.user.updateUser(player.user.id, {'credits': player.user.money});
             player.user.gone = true;
             this.nextPlayer();
         }
@@ -232,11 +237,22 @@ module.exports = function (w) {
     };
 
     this.preparedPlayers = () => {
-        let users = [];
         for (let i = 0; i < this.players.length; i++) {
-            users.push(this.players[i].user);
+            let player = this.players[i].user;
+
+            w.services.user.getUser(player.id).then((user) => {
+                if (user) {
+                    player.money = user.dataValues.credits;
+                    console.log('userinpromise', user.dataValues.credits);
+                } else {
+                    defer.reject('User not found.');
+                }
+            }, (err) => {
+                console.log(err);
+            });
+            console.log('this.cleanPlayers', player);
         }
-        return users;
+        return this.cleanPlayers;
     };
 
     this.readyCheck = () => {

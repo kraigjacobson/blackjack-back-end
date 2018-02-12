@@ -5,6 +5,7 @@ const passhash = require('password-hash-and-salt');
 const crypto = require('crypto');
 
 module.exports = function(w) {
+    this.test = 1234;
     this.login = (user) => {
         console.log('user', user);
         let username = user.username;
