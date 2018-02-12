@@ -5,7 +5,10 @@ const passhash = require('password-hash-and-salt');
 const crypto = require('crypto');
 
 module.exports = function(w) {
-    this.login = (username, password) => {
+    this.login = (user) => {
+        console.log('user', user);
+        let username = user.username;
+        let password = user.password;
         let defer = Q.defer();
 
         w.entities.user.findOne({
@@ -256,24 +259,39 @@ module.exports = function(w) {
     };
 
     this.registerUser = (data) => {
+
+        console.log('data', data);
         let defer = Q.defer();
 
-        passhash(data.user.password).hash((err, hash) => {
-            if (err) {
-                defer.reject(err);
-            } else {
-                delete data.user.credits;
-                data.user.roles = 'ROLE_USER';
-                data.user.password = hash;
-
-                w.entities.user.create(data.user).then((user) => {
-                    defer.resolve({
-                        user: user
-                    });
-                }, (err) => {
-                    defer.reject(err);
-                });
+        w.entities.user.findOne({
+            where: {
+                username: data.user.username
             }
+        }).then((user) => {
+            console.log('user', user);
+            if (!user) {
+                passhash(data.user.password).hash((err, hash) => {
+                    if (err) {
+                        defer.reject(err);
+                    } else {
+                        delete data.user.credits;
+                        data.user.roles = 'ROLE_USER';
+                        data.user.password = hash;
+
+                        w.entities.user.create(data.user).then((user) => {
+                            defer.resolve({
+                                user: user
+                            });
+                        }, (err) => {
+                            defer.reject(err);
+                        });
+                    }
+                });
+            } else {
+                defer.reject({type: 'invalid_username', message: 'Username taken.'});
+            }
+        }, (err) => {
+            defer.reject(err);
         });
 
         return defer.promise;

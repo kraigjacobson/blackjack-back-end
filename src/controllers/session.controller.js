@@ -10,7 +10,7 @@ module.exports = function(w, app) {
     });
 
     app.post('/login', function (req, res, next) {
-        w.services.user.login(req.body.username, req.body.password).then((session) => {
+        w.services.user.login(req.body).then((session) => {
             res.send({
                 success: true,
                 message: 'Logged in successfully.',

@@ -9,6 +9,7 @@ module.exports = function(w, app) {
                 data: data
             });
         }, (err) => {
+            res.status(401);
             next(err);
         });
     });
