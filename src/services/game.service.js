@@ -68,7 +68,7 @@ module.exports = function (w) {
                 player.user.count = this.calculateCount(player.user.hand);
                 if (j === 1 && player.user.count === 21){
                     // BLACKJACK
-                    player.user.money += Math.ceil(player.user.bet * 2);
+                    player.user.money += Math.ceil(player.user.bet * 3);
                     w.services.user.updateUser(player.user.id, {'credits': player.user.money}).then(result => {
                             this.sendUpdate();
                         }
@@ -149,7 +149,7 @@ module.exports = function (w) {
                     if (player.user.money <= 0 ) {
                         // player is out of money
                         player.emit('alert', {'type':'DANGER','message': 'You are out of money!'});
-                        socket.emit('buttons', [
+                        player.emit('buttons', [
                             {'button':'ready', 'condition':false},
                             {'button':'hit','condition':false},
                             {'button':'stay','condition':false},
@@ -314,6 +314,10 @@ module.exports = function (w) {
         this.dealerHidden.count = 0;
         this.dealer21 = false;
         this.activePlay = false;
+    };
+
+    this.randomNumber = (max, min = 0) => {
+        return min + Math.floor(Math.random()*max);
     };
 
     this.sendUpdate = () => {

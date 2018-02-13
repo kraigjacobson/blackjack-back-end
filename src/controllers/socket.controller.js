@@ -7,7 +7,7 @@ module.exports = function (w, app, io) {
             return;
         }
         let game = w.services.game;
-        socket.user = {'id': socket.session.session.userId, 'username': socket.session.user.username, 'hand': [], 'ready': false, 'money': 100, 'count': 0, 'bet': 5, 'active': true, 'gone': false, 'turn': false, 'double': false};
+        socket.user = {'id': socket.session.session.userId, 'username': socket.session.user.username, 'hand': [], 'ready': false, 'money': 100, 'count': 0, 'bet': 5, 'active': true, 'gone': false, 'turn': false, 'double': false, 'image': game.randomNumber(15)};
         socket.join('user:' + socket.session.user.id);
 
         console.log(`${socket.user.username} connected.`);
