@@ -21,7 +21,7 @@ module.exports = function (w, app, io) {
             if (game.players.length < 5) {
                 game.sit(socket);
             } else {
-                game.sendToWaitlist();
+                game.sendToWaitlist(socket);
             }
         } else {
             socket.emit('alert', {'type':'WARNING','message': `Round in play. Please wait until a new round begins.`});
@@ -32,6 +32,7 @@ module.exports = function (w, app, io) {
 
         socket.on('message', function (message) {
             io.emit('message', `${socket.user.username}: ${message}`);
+            console.log(message);
         });
 
         socket.on('readyCheck', function (data) {
@@ -84,6 +85,17 @@ module.exports = function (w, app, io) {
                 let player = game.players[i];
                 if (player.user.username === socket.user.username) {
                     game.players.splice(i, 1);
+                    if (game.activePlay) {
+                        game.nextPlayer();
+                    } else {
+                        game.readyCheck();
+                    }
+                }
+            }
+            for ( let i = 0; i < game.waitlist.length; i++ ) {
+                let player = game.waitlist[i];
+                if (player.user.username === socket.user.username) {
+                    game.waitlist.splice(i, 1);
                     if (game.activePlay) {
                         game.nextPlayer();
                     } else {

@@ -68,7 +68,7 @@ module.exports = function (w) {
                 player.user.count = this.calculateCount(player.user.hand);
                 if (j === 1 && player.user.count === 21){
                     // BLACKJACK
-                    player.user.money += Math.ceil(player.user.bet * 3);
+                    player.user.money += Math.ceil(player.user.bet * 2);
                     w.services.user.updateUser(player.user.id, {'credits': player.user.money}).then(result => {
                             this.sendUpdate();
                         }
@@ -138,7 +138,13 @@ module.exports = function (w) {
                 if (this.dealer.count > 21 || this.dealer.count < player.user.count) {
                     // player wins
                     player.emit('alert', {'type':'SUCCESS','message': 'You Win!'});
-                    player.user.money += player.user.bet*2;
+                    let mult;
+                    if (player.user.double) {
+                        mult = 3;
+                    } else {
+                        mult = 2;
+                    }
+                    player.user.money += player.user.bet*mult;
                     w.services.user.updateUser(player.user.id, {'credits': player.user.money}).then(result => {
                             this.sendUpdate();
                         }
@@ -220,15 +226,15 @@ module.exports = function (w) {
 
     this.double = (player) => {
         player.user.double = true;
+        player.user.money -= player.user.bet;
         this.playerHits(player);
         player.user.turn = false;
         player.user.gone = true;
         this.nextPlayer();
-
     };
 
     this.buyIn = (player, amount = 100) => {
-        player.user.money += amount;
+        player.user.money = amount;
         w.services.user.updateUser(player.user.id, {'credits': player.user.money}).then(result => {
                 this.sendUpdate();
             }
@@ -277,7 +283,6 @@ module.exports = function (w) {
         let ready = true;
         this.players.forEach((player) => {
             if (player.user.ready === false){
-                w.io.emit('message', `Waiting on ${player.user.username}...`);
                 ready = false;
             }
         });
@@ -300,8 +305,8 @@ module.exports = function (w) {
 
     this.sendToWaitlist = (socket) => {
         this.waitlist.push(socket);
-        player.emit('alert', {'type':'WARNING','message': `There are no available seats. You've been placed on a waitlist.`});
-        player.emit('buttons', [
+        socket.emit('alert', {'type':'WARNING','message': `There are no available seats. You've been placed on a waitlist.`});
+        socket.emit('buttons', [
             {'button':'ready', 'condition':false}]);
         this.sendUpdate();
     };
