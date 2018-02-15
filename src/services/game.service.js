@@ -54,7 +54,9 @@ module.exports = function (w) {
         this.currentPlayerPosition = 0;
         this.activePlay = true;
         this.dealer = {'hand': [], 'count': 0};
-        this.currentDeck = this.getNewDeck();
+        if (this.currentDeck.length < 26) {
+            this.currentDeck = this.getNewDeck();
+        }
         // deal 2 cards to each player
         this.players.forEach((player) => {
             player.user.hand = [];
@@ -74,6 +76,7 @@ module.exports = function (w) {
                         }
                     );
                     player.emit('alert', {'type':'SUCCESS','message': 'You got a BlackJack!'});
+                    this.recordResult(player, true);
                     player.user.active = false;
                     player.user.turn = false;
                     player.user.gone = true;
@@ -101,6 +104,7 @@ module.exports = function (w) {
             if (!player.user.gone) {
                 if (this.dealer21) {
                     player.emit('alert', {'type':'DANGER','message': 'Dealer got 21. You lose!'});
+                    this.recordResult(player, false);
                     player.user.turn = false;
                     player.user.active = false;
                     player.user.gone = true;
@@ -138,6 +142,7 @@ module.exports = function (w) {
                 if (this.dealer.count > 21 || this.dealer.count < player.user.count) {
                     // player wins
                     player.emit('alert', {'type':'SUCCESS','message': 'You Win!'});
+                    this.recordResult(player, true);
                     let mult;
                     if (player.user.double) {
                         mult = 3;
@@ -152,6 +157,7 @@ module.exports = function (w) {
                 } else if (this.dealer.count > player.user.count) {
                     // player loses
                     player.emit('alert', {'type':'DANGER','message': 'You Lose!'});
+                    this.recordResult(player, false);
                     if (player.user.money <= 0 ) {
                         // player is out of money
                         player.emit('alert', {'type':'DANGER','message': 'You are out of money!'});
@@ -182,7 +188,7 @@ module.exports = function (w) {
                 player.user.ready = false;
                 player.user.active = true;
                 player.user.gone = false;
-                player.user.double = false;
+                player.user.hit = false;
             }
         }
         this.activePlay = false;
@@ -205,6 +211,7 @@ module.exports = function (w) {
         player.user.count = this.calculateCount(player.user.hand);
         if (player.user.count > 21) {
             player.emit('alert', {'type':'DANGER','message': 'You Busted!'});
+            this.recordResult(player, false);
             player.user.turn = false;
             player.user.active = false;
             let mult;
@@ -235,6 +242,7 @@ module.exports = function (w) {
 
     this.buyIn = (player, amount = 100) => {
         player.user.money = amount;
+        player.user.debt+=amount;
         w.services.user.updateUser(player.user.id, {'credits': player.user.money}).then(result => {
                 this.sendUpdate();
             }
@@ -260,19 +268,24 @@ module.exports = function (w) {
         other.forEach((card) => {
             total += card.value;
         });
-        let possibilities = Math.pow(aces.length, 2);
         if (aces.length) {
-            let subtotal = 0;
-            for (let i = 0; i < possibilities; i++) {
-                let eleven = aces.length - i;
-                let subtotal = eleven * 11 + i;
-                if (total + subtotal < 22) {
-                    total += subtotal;
-                    break;
+            aces.forEach(ace=> {
+                if (total + 11 > 21) {
+                    total += 1;
                 }
-            }
+            })
         }
         return total;
+    };
+
+
+    this.recordResult = (socket, win) => {
+        if (win) {
+            socket.user.wins++
+        } else {
+            socket.user.losses++
+        }
+        console.log(`${socket.user.username} ${socket.user.wins}/${socket.user.losses} | debt: ${socket.user.debt} | ratio: ${Math.round((socket.user.wins / (socket.user.wins + socket.user.losses)) * 1000)/1000}`);
     };
 
     this.preparedPlayers = async () => {
