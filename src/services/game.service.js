@@ -248,17 +248,30 @@ module.exports = function (w) {
 
     this.calculateCount = (hand) => {
         let total = 0;
+        let aces = [];
+        let other = [];
         hand.forEach((card) => {
             if (card.name === "ace") {
-                if (total + 11 <= 21) {
-                    total += 11;
-                } else if (total + 1 <= 21) {
-                    total += 1;
-                }
+                aces.push(card);
             } else {
-                total += card.value;
+                other.push(card);
             }
         });
+        other.forEach((card) => {
+            total += card.value;
+        });
+        let possibilities = Math.pow(aces.length, 2);
+        if (aces.length) {
+            let subtotal = 0;
+            for (let i = 0; i < possibilities; i++) {
+                let eleven = aces.length - i;
+                let subtotal = eleven * 11 + i;
+                if (total + subtotal < 22) {
+                    total += subtotal;
+                    break;
+                }
+            }
+        }
         return total;
     };
 

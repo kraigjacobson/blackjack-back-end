@@ -106,6 +106,7 @@ module.exports = function (w, app, io) {
             game.sendUpdate();
             console.log(`${socket.user.username} disconnected.`);
             io.emit('message', `${socket.user.username} disconnected.`);
+            socket.disconnect();
         });
     });
 };
