@@ -11,6 +11,7 @@ module.exports = function (w) {
     this.dealer21 = false;
     this.waitlist = [];
     this.activePlay = false;
+    this.maxPlayers = 1;
 
     this.getNewDeck = () => {
         let deck = [];
@@ -195,10 +196,10 @@ module.exports = function (w) {
         this.dealer21 = false;
         if (this.waitlist.length) {
             this.waitlist.forEach((player) => {
-                if (this.players.length < 5) {
+                if (this.players.length < this.maxPlayers) {
                     this.sit(this.waitlist.shift());
                 } else {
-                    socket.emit('alert', {'type':'WARNING','message': `Sorry there are still no seats avalable.`});
+                    player.emit('alert', {'type':'WARNING','message': `Sorry there are still no seats avalable.`});
                 }
             });
         }
@@ -305,6 +306,16 @@ module.exports = function (w) {
         return users;
     };
 
+    this.preparedWaitlist = () => {
+        let users = [];
+
+        for (let i = 0; i < this.waitlist.length; i++) {
+            users.push(this.waitlist[i].user);
+        }
+        console.log('clean waitlist', users);
+        return users;
+    };
+
     this.readyCheck = () => {
         let ready = true;
         this.players.forEach((player) => {
@@ -318,7 +329,7 @@ module.exports = function (w) {
     };
 
     this.sit = (socket) => {
-        if (this.players.length < 5) {
+        if (this.players.length < this.maxPlayers) {
             this.players.push(socket);
             socket.emit('alert', {'type':'SUCCESS','message': `You have been seated.`});
             socket.emit('buttons', [
@@ -353,7 +364,7 @@ module.exports = function (w) {
 
     this.sendUpdate = () => {
         this.preparedPlayers().then((users) => {
-            w.io.emit('dataUpdate', {'players': users, 'dealer': this.dealer, 'activePlay': this.activePlay});
+            w.io.emit('dataUpdate', {'players': users, 'waitlist': this.preparedWaitlist(), 'dealer': this.dealer, 'activePlay': this.activePlay});
         });
     };
 };

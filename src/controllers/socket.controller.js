@@ -18,7 +18,7 @@ module.exports = function (w, app, io) {
         }
         // if round already started
         if (!game.activePlay) {
-            if (game.players.length < 5) {
+            if (game.players.length < game.maxPlayers) {
                 game.sit(socket);
             } else {
                 game.sendToWaitlist(socket);
