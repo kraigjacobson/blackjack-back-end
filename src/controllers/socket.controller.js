@@ -7,7 +7,10 @@ module.exports = function (w, app, io) {
             return;
         }
         let game = w.services.game;
-        socket.user = {'id': socket.session.session.userId, 'username': socket.session.user.username, 'hand': [], 'ready': false, 'money': 100, 'count': 0, 'bet': 5, 'active': true, 'gone': false, 'turn': false, 'double': false, 'hit':false, 'image': game.randomNumber(15), 'wins':0,'losses':0, 'debt': 0};
+        if (!game.images.length) {
+            game.refreshImages();
+        }
+        socket.user = {'id': socket.session.session.userId, 'username': socket.session.user.username, 'hand': [], 'ready': false, 'money': 100, 'count': 0, 'bet': 5, 'active': true, 'gone': false, 'turn': false, 'double': false, 'hit':false, 'image': game.images.splice(game.randomNumber(15), 1), 'wins':0,'losses':0, 'debt': 0};
         socket.join('user:' + socket.session.user.id);
 
         console.log(`${socket.user.username} connected.`);
@@ -32,7 +35,6 @@ module.exports = function (w, app, io) {
 
         socket.on('message', function (message) {
             io.emit('message', `${socket.user.username}: ${message}`);
-            console.log(message);
         });
 
         socket.on('readyCheck', function (data) {
@@ -82,7 +84,6 @@ module.exports = function (w, app, io) {
         });
 
         socket.on('disconnect', function () {
-            console.log('player disconnected');
             for ( let i = 0; i < game.players.length; i++ ) {
                 let player = game.players[i];
                 if (player.user.username === socket.user.username) {

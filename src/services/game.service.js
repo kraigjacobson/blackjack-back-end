@@ -11,7 +11,8 @@ module.exports = function (w) {
     this.dealer21 = false;
     this.waitlist = [];
     this.activePlay = false;
-    this.maxPlayers = 1;
+    this.images = [];
+    this.maxPlayers = 5;
 
     this.getNewDeck = () => {
         let deck = [];
@@ -273,6 +274,8 @@ module.exports = function (w) {
             aces.forEach(ace=> {
                 if (total + 11 > 21) {
                     total += 1;
+                } else {
+                    total += 11;
                 }
             })
         }
@@ -286,7 +289,7 @@ module.exports = function (w) {
         } else {
             socket.user.losses++
         }
-        console.log(`${socket.user.username} ${socket.user.wins}/${socket.user.losses} | debt: ${socket.user.debt} | ratio: ${Math.round((socket.user.wins / (socket.user.wins + socket.user.losses)) * 1000)/1000}`);
+        //console.log(`${socket.user.username} ${socket.user.wins}/${socket.user.losses} | debt: ${socket.user.debt} | ratio: ${Math.round((socket.user.wins / (socket.user.wins + socket.user.losses)) * 1000)/1000}`);
     };
 
     this.preparedPlayers = async () => {
@@ -312,7 +315,6 @@ module.exports = function (w) {
         for (let i = 0; i < this.waitlist.length; i++) {
             users.push(this.waitlist[i].user);
         }
-        console.log('clean waitlist', users);
         return users;
     };
 
@@ -356,6 +358,7 @@ module.exports = function (w) {
         this.dealerHidden.count = 0;
         this.dealer21 = false;
         this.activePlay = false;
+        this.refreshImages();
     };
 
     this.randomNumber = (max, min = 0) => {
@@ -366,5 +369,11 @@ module.exports = function (w) {
         this.preparedPlayers().then((users) => {
             w.io.emit('dataUpdate', {'players': users, 'waitlist': this.preparedWaitlist(), 'dealer': this.dealer, 'activePlay': this.activePlay});
         });
+    };
+
+    this.refreshImages = () => {
+        for(let i = 0; i < 16; i++) {
+            this.images.push(i);
+        }
     };
 };

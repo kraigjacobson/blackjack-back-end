@@ -5,9 +5,7 @@ const passhash = require('password-hash-and-salt');
 const crypto = require('crypto');
 
 module.exports = function(w) {
-    this.test = 1234;
     this.login = (user) => {
-        console.log('user', user);
         let username = user.username;
         let password = user.password;
         let defer = Q.defer();
@@ -261,7 +259,6 @@ module.exports = function(w) {
 
     this.registerUser = (data) => {
 
-        console.log('data', data);
         let defer = Q.defer();
 
         w.entities.user.findOne({
@@ -269,7 +266,6 @@ module.exports = function(w) {
                 username: data.user.username
             }
         }).then((user) => {
-            console.log('user', user);
             if (!user) {
                 passhash(data.user.password).hash((err, hash) => {
                     if (err) {
