@@ -1,6 +1,9 @@
 'use strict';
 
 module.exports = function (w, app, io) {
+
+    let express = require('express');
+    app.use(express.static('static'));
     io.on('connect', (socket) => {
         if (!socket.session) {
             socket.disconnect();
