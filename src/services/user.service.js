@@ -285,7 +285,7 @@ module.exports = function(w) {
                     }
                 });
             } else {
-                defer.reject({type: 'invalid_username', message: 'Username taken.'});
+                defer.reject('Username taken.');
             }
         }, (err) => {
             defer.reject(err);
