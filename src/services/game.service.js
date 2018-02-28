@@ -139,6 +139,7 @@ module.exports = function (w) {
             }
         }
 
+        let promises = [];
         this.players.forEach((player) => {
             if (player.user.active) {
                 if (this.dealer.count > 21 || this.dealer.count < player.user.count) {
@@ -152,10 +153,7 @@ module.exports = function (w) {
                         mult = 2;
                     }
                     player.user.money += player.user.bet*mult;
-                    w.services.user.updateUser(player.user.id, {'credits': player.user.money}).then(result => {
-                            this.sendUpdate();
-                        }
-                    );
+                    promises.push(w.services.user.updateUser(player.user.id, {'credits': player.user.money}));
                 } else if (this.dealer.count > player.user.count) {
                     // player loses
                     player.emit('alert', {'type':'DANGER','message': 'You Lose!'});
@@ -172,39 +170,38 @@ module.exports = function (w) {
                 } else {
                     // player pushes
                     player.user.money += player.user.bet;
-                    w.services.user.updateUser(player.user.id, {'credits': player.user.money}).then(result => {
-                            this.sendUpdate();
-                        }
-                    );
+                    promises.push(w.services.user.updateUser(player.user.id, {'credits': player.user.money}));
                     player.emit('alert', {'type':'INFO','message': 'You push!'});
                 }
             }
         });
 
 
-        w.io.emit('buttons', [
-            {'button':'ready', 'condition':true}]);
-        for (let j = 0; j < this.players.length; j++) {
-            let player = this.players[j];
-            if (player){
-                player.user.ready = false;
-                player.user.active = true;
-                player.user.gone = false;
-                player.user.hit = false;
-            }
-        }
-        this.activePlay = false;
-        this.dealer21 = false;
-        if (this.waitlist.length) {
-            this.waitlist.forEach((player) => {
-                if (this.players.length < this.maxPlayers) {
-                    this.sit(this.waitlist.shift());
-                } else {
-                    player.emit('alert', {'type':'WARNING','message': `Sorry there are still no seats avalable.`});
+        Q.all(promises).then(() => {
+            w.io.emit('buttons', [
+                {'button':'ready', 'condition':true}]);
+            for (let j = 0; j < this.players.length; j++) {
+                let player = this.players[j];
+                if (player){
+                    player.user.ready = false;
+                    player.user.active = true;
+                    player.user.gone = false;
+                    player.user.hit = false;
                 }
-            });
-        }
-        this.sendUpdate();
+            }
+            this.activePlay = false;
+            this.dealer21 = false;
+            if (this.waitlist.length) {
+                this.waitlist.forEach((player) => {
+                    if (this.players.length < this.maxPlayers) {
+                        this.sit(this.waitlist.shift());
+                    } else {
+                        player.emit('alert', {'type':'WARNING','message': `Sorry there are still no seats avalable.`});
+                    }
+                });
+            }
+            this.sendUpdate();
+        });
     };
 
     this.playerHits = (player) => {
@@ -216,17 +213,14 @@ module.exports = function (w) {
             this.recordResult(player, false);
             player.user.turn = false;
             player.user.active = false;
-            let mult;
             if (player.user.double) {
-                mult = 2;
-            } else {
-                mult = 1;
+                player.user.money -= player.user.bet;
+                w.services.user.updateUser(player.user.id, {'credits': player.user.money}).then(result => {
+                        this.sendUpdate();
+                    }
+                );
             }
-            player.user.money -= player.user.bet * mult;
-            w.services.user.updateUser(player.user.id, {'credits': player.user.money}).then(result => {
-                    this.sendUpdate();
-                }
-            );
+
             player.user.gone = true;
             this.nextPlayer();
         }
